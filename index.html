@@ -1,0 +1,717 @@
+<!DOCTYPE html>
+<html lang="pt" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DataStudio - Developer Knowledge Base</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        darker: '#0b0f19',
+                        darkSurface: '#111827',
+                        darkCard: '#1f2937',
+                        accent: '#6366f1',
+                    }
+                }
+            }
+        }
+    </script>
+    <!-- Font Awesome for Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts Inter -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        code, pre { font-family: 'Fira Code', monospace; }
+        /* Custom scrollbar */
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: #111827; }
+        ::-webkit-scrollbar-thumb { background: #374151; border-radius: 3px; }
+        ::-webkit-scrollbar-thumb:hover { background: #4b5563; }
+    </style>
+</head>
+<body class="bg-darker text-gray-100 min-h-screen flex flex-col antialiased selection:bg-indigo-500 selection:text-white">
+
+    <!-- Custom Notification Modal (replaces alert) -->
+    <div id="notificationModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm hidden">
+        <div class="bg-darkCard border border-gray-700 rounded-2xl p-6 max-w-md w-full mx-4 shadow-2xl transform transition-all">
+            <div class="flex items-center space-x-3 mb-4">
+                <div id="modalIcon" class="w-10 h-10 rounded-xl bg-indigo-500/20 text-indigo-400 flex items-center justify-center text-lg">
+                    <i class="fa-solid fa-info"></i>
+                </div>
+                <h3 id="modalTitle" class="text-lg font-bold text-white">Notificação</h3>
+            </div>
+            <p id="modalMessage" class="text-gray-300 text-sm mb-6 leading-relaxed">Mensagem aqui...</p>
+            <div class="flex justify-end space-x-3">
+                <button id="modalCancelBtn" onclick="closeModal()" class="px-4 py-2 rounded-xl bg-gray-700 hover:bg-gray-600 text-gray-200 text-sm font-medium transition hidden">Cancelar</button>
+                <button onclick="closeModal()" class="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-semibold transition shadow-lg shadow-indigo-600/30">Entendido</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Container -->
+    <div class="flex h-screen overflow-hidden">
+        
+        <!-- Sidebar -->
+        <aside id="sidebar" class="w-72 bg-darkSurface border-r border-gray-800 flex flex-col transition-all duration-300 z-30 fixed md:static inset-y-0 left-0 transform -translate-x-full md:translate-x-0">
+            <!-- App Branding -->
+            <div class="p-5 border-b border-gray-800 flex items-center justify-between">
+                <div class="flex items-center space-x-3">
+                    <div class="w-9 h-9 rounded-xl bg-gradient-to-tr from-indigo-600 to-violet-500 flex items-center justify-center text-white shadow-lg shadow-indigo-500/30">
+                        <i class="fa-solid fa-code text-sm"></i>
+                    </div>
+                    <div>
+                        <h1 class="font-bold text-base tracking-wide text-white">DataStudio</h1>
+                        <p class="text-xs text-gray-400">Knowledge Base</p>
+                    </div>
+                </div>
+                <button onclick="toggleSidebar()" class="md:hidden text-gray-400 hover:text-white">
+                    <i class="fa-solid fa-xmark text-lg"></i>
+                </button>
+            </div>
+
+            <!-- Firebase Status Banner -->
+            <div id="firebaseStatus" class="mx-4 mt-4 p-2.5 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-300 text-xs flex items-center justify-between">
+                <div class="flex items-center space-x-2">
+                    <i class="fa-solid fa-database text-amber-400"></i>
+                    <span id="statusText">Modo Local (Offline)</span>
+                </div>
+                <button onclick="openConfigModal()" class="underline hover:text-amber-200 font-medium">Ligar</button>
+            </div>
+
+            <!-- Search Bar -->
+            <div class="p-4">
+                <div class="relative">
+                    <span class="absolute inset-y-0 left-0 flex items-center pl-3 text-gray-400">
+                        <i class="fa-solid fa-magnifying-glass text-xs"></i>
+                    </span>
+                    <input type="text" id="searchInput" oninput="handleSearch(this.value)" placeholder="Pesquisar notas ou códigos..." class="w-full bg-darker border border-gray-800 rounded-xl pl-9 pr-4 py-2 text-sm text-gray-200 placeholder-gray-500 focus:outline-none focus:border-indigo-500 transition">
+                </div>
+            </div>
+
+            <!-- Boards Navigation List -->
+            <div class="flex-1 overflow-y-auto px-4 py-2 space-y-1">
+                <div class="text-xs font-semibold text-gray-500 uppercase tracking-wider px-3 mb-2">Boards / Temas</div>
+                <div id="boardsListContainer" class="space-y-1">
+                    <!-- Dynamic Boards populated via JS -->
+                </div>
+            </div>
+
+            <!-- Footer Sidebar Settings -->
+            <div class="p-4 border-t border-gray-800 flex items-center justify-between text-xs text-gray-400">
+                <span id="userInfo">Convidado</span>
+                <button onclick="openConfigModal()" class="hover:text-white transition flex items-center space-x-1 bg-darkCard px-2.5 py-1.5 rounded-lg border border-gray-700">
+                    <i class="fa-solid fa-gear"></i>
+                    <span>Config</span>
+                </button>
+            </div>
+        </aside>
+
+        <!-- Main Content Area -->
+        <main class="flex-1 flex flex-col h-screen overflow-hidden bg-darker">
+            <!-- Top Navbar -->
+            <header class="h-16 bg-darkSurface border-b border-gray-800 px-6 flex items-center justify-between z-20">
+                <div class="flex items-center space-x-4">
+                    <button onclick="toggleSidebar()" class="md:hidden text-gray-400 hover:text-white focus:outline-none">
+                        <i class="fa-solid fa-bars text-lg"></i>
+                    </button>
+                    <div>
+                        <h2 id="currentBoardTitle" class="text-lg font-bold text-white flex items-center space-x-2">
+                            <span>Python</span>
+                        </h2>
+                        <p id="currentBoardDesc" class="text-xs text-gray-400">Notas e snippets de código úteis</p>
+                    </div>
+                </div>
+                <div class="flex items-center space-x-3">
+                    <button onclick="openNewNoteModal()" class="bg-indigo-600 hover:bg-indigo-500 text-white px-4 py-2 rounded-xl text-sm font-semibold transition flex items-center space-x-2 shadow-lg shadow-indigo-600/30">
+                        <i class="fa-solid fa-plus text-xs"></i>
+                        <span>Nova Nota</span>
+                    </button>
+                </div>
+            </header>
+
+            <!-- Dashboard Split View / Content Grid -->
+            <div class="flex-1 overflow-y-auto p-6 md:p-8">
+                <!-- Empty State -->
+                <div id="emptyState" class="hidden flex flex-col items-center justify-center h-full text-center py-12">
+                    <div class="w-16 h-16 rounded-2xl bg-darkCard border border-gray-800 flex items-center justify-center text-gray-500 text-2xl mb-4 shadow-inner">
+                        <i class="fa-regular fa-note-sticky"></i>
+                    </div>
+                    <h3 class="text-base font-semibold text-white mb-1">Sem notas neste board</h3>
+                    <p class="text-sm text-gray-400 max-w-sm mb-6">Ainda não criaste nenhuma página de notas para este tema. Começa por adicionar a primeira.</p>
+                    <button onclick="openNewNoteModal()" class="bg-darkCard hover:bg-gray-800 text-gray-200 border border-gray-700 px-4 py-2 rounded-xl text-sm font-medium transition">
+                        Criar Nota Agora
+                    </button>
+                </div>
+
+                <!-- Notes Grid -->
+                <div id="notesGrid" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+                    <!-- Dynamic Notes Cards -->
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Note Detail / Edit Modal -->
+    <div id="noteModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-md hidden p-4">
+        <div class="bg-darkCard border border-gray-700 rounded-2xl max-w-3xl w-full max-h-[90vh] flex flex-col shadow-2xl overflow-hidden transform transition-all">
+            <!-- Modal Header -->
+            <div class="px-6 py-4 border-b border-gray-700 flex items-center justify-between bg-darkSurface">
+                <div class="flex items-center space-x-3">
+                    <span id="modalBoardBadge" class="px-2.5 py-1 rounded-lg text-xs font-semibold bg-indigo-500/20 text-indigo-400 border border-indigo-500/30">Python</span>
+                    <h3 id="noteModalTitleLabel" class="text-base font-bold text-white">Criar Nova Nota</h3>
+                </div>
+                <button onclick="closeNoteModal()" class="text-gray-400 hover:text-white transition">
+                    <i class="fa-solid fa-xmark text-lg"></i>
+                </button>
+            </div>
+            <!-- Modal Body (Form) -->
+            <div class="p-6 overflow-y-auto space-y-4 flex-1">
+                <input type="hidden" id="noteId">
+                <div>
+                    <label class="block text-xs font-semibold text-gray-400 uppercase mb-1">Título da Página / Tópico</label>
+                    <input type="text" id="noteTitleInput" placeholder="Ex: List Comprehensions avançadas" class="w-full bg-darker border border-gray-700 rounded-xl px-4 py-2.5 text-sm text-gray-100 placeholder-gray-500 focus:outline-none focus:border-indigo-500 transition">
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-gray-400 uppercase mb-1">Resumo / Descrição Curta</label>
+                    <input type="text" id="noteDescInput" placeholder="Ex: Como filtrar e transformar listas eficientemente" class="w-full bg-darker border border-gray-700 rounded-xl px-4 py-2.5 text-sm text-gray-100 placeholder-gray-500 focus:outline-none focus:border-indigo-500 transition">
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-gray-400 uppercase mb-1">Conteúdo & Código (Markdown / Snippets)</label>
+                    <textarea id="noteContentInput" rows="10" placeholder="Escreve as tuas notas, explicações e blocos de código aqui..." class="w-full bg-darker border border-gray-700 rounded-xl p-4 text-sm font-mono text-gray-200 placeholder-gray-600 focus:outline-none focus:border-indigo-500 transition leading-relaxed"></textarea>
+                </div>
+            </div>
+            <!-- Modal Footer -->
+            <div class="px-6 py-4 border-t border-gray-700 bg-darkSurface flex items-center justify-between">
+                <button id="deleteNoteBtn" onclick="deleteCurrentNote()" class="text-red-400 hover:text-red-300 text-sm font-medium transition hidden flex items-center space-x-1.5">
+                    <i class="fa-regular fa-trash-can"></i>
+                    <span>Eliminar Nota</span>
+                </button>
+                <div class="flex items-center space-x-3 ml-auto">
+                    <button onclick="closeNoteModal()" class="px-4 py-2 rounded-xl bg-gray-700 hover:bg-gray-600 text-gray-200 text-sm font-medium transition">Cancelar</button>
+                    <button onclick="saveNote()" class="px-5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-semibold transition shadow-lg shadow-indigo-600/30">Guardar Nota</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Firebase Config Modal -->
+    <div id="configModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-md hidden p-4">
+        <div class="bg-darkCard border border-gray-700 rounded-2xl max-w-lg w-full p-6 shadow-2xl">
+            <div class="flex items-center justify-between mb-4">
+                <h3 class="text-lg font-bold text-white flex items-center space-x-2">
+                    <i class="fa-solid fa-database text-indigo-400"></i>
+                    <span>Configuração do Firebase</span>
+                </h3>
+                <button onclick="closeConfigModal()" class="text-gray-400 hover:text-white"><i class="fa-solid fa-xmark text-lg"></i></button>
+            </div>
+            <p class="text-xs text-gray-300 mb-4 leading-relaxed">
+                Para guardar as tuas notas na cloud e acederes em qualquer dispositivo, insere as credenciais da tua consola Firebase. Se deixares vazio, a app funciona em modo local (LocalStorage).
+            </p>
+            <div class="space-y-3 mb-6">
+                <div>
+                    <label class="block text-xs font-semibold text-gray-400 uppercase mb-1">Firebase Config (JSON ou objeto)</label>
+                    <textarea id="firebaseConfigInput" rows="6" placeholder='{&#10;  "apiKey": "AIzaSy...",&#10;  "authDomain": "...",&#10;  "projectId": "...",&#10;  "storageBucket": "...",&#10;  "messagingSenderId": "...",&#10;  "appId": "..."&#10;}' class="w-full bg-darker border border-gray-700 rounded-xl p-3 text-xs font-mono text-gray-200 placeholder-gray-600 focus:outline-none focus:border-indigo-500 transition"></textarea>
+                </div>
+            </div>
+            <div class="flex justify-end space-x-3">
+                <button onclick="closeConfigModal()" class="px-4 py-2 rounded-xl bg-gray-700 hover:bg-gray-600 text-gray-200 text-sm font-medium transition">Cancelar</button>
+                <button onclick="saveFirebaseConfig()" class="px-5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-semibold transition shadow-lg shadow-indigo-600/30">Ligar Firebase</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Application Script -->
+    <script type="module">
+        // Import Firebase SDKs
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, collection, doc, getDocs, setDoc, deleteDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        // Boards Definition
+        const BOARDS = [
+            { id: 'python', name: 'Python', icon: 'fa-brands fa-python', color: 'text-amber-400', desc: 'Linguagem de programação, scripts e boas práticas' },
+            { id: 'pyspark', name: 'PySpark', icon: 'fa-solid fa-bolt', color: 'text-orange-400', desc: 'Processamento distribuído de dados em grande escala' },
+            { id: 'databricks', name: 'Databricks', icon: 'fa-solid fa-mountain', color: 'text-red-400', desc: 'Lakehouse, notebooks, clusters e otimizações' },
+            { id: 'sql', name: 'SQL', icon: 'fa-solid fa-database', color: 'text-blue-400', desc: 'Consultas complexas, window functions e tuning' },
+            { id: 'git', name: 'Git', icon: 'fa-solid fa-code-branch', color: 'text-emerald-400', desc: 'Controlo de versões, branches e workflows' },
+            { id: 'snowflake', name: 'Snowflake', icon: 'fa-solid fa-snowflake', color: 'text-sky-400', desc: 'Data warehouse cloud, copias, streams e tasks' },
+            { id: 'azure', name: 'Azure', icon: 'fa-solid fa-cloud', color: 'text-indigo-400', desc: 'ADF, Data Lake, Databricks integration e segurança' },
+            { id: 'terraform', name: 'Terraform', icon: 'fa-solid fa-cubes', color: 'text-violet-400', desc: 'Infrastructure as Code (IaC) e providers' }
+        ];
+
+        let currentBoardId = 'python';
+        let searchQuery = '';
+        let notesData = {}; // Format: { boardId: [ {id, title, desc, content, updatedAt}, ... ] }
+        
+        // Firebase state variables
+        let db = null;
+        let auth = null;
+        let isFirebaseActive = false;
+        let unsubscribeNotes = null;
+
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'datastudio-default-app';
+
+        window.addEventListener('DOMContentLoaded', () => {
+            initBoardsNav();
+            loadInitialData();
+            
+            // Check if saved firebase config exists in localStorage
+            const savedConfig = localStorage.getItem('datastudio_firebase_config');
+            if (savedConfig) {
+                try {
+                    const configObj = JSON.parse(savedConfig);
+                    initFirebase(configObj);
+                } catch(e) {
+                    console.error("Erro ao carregar config guardada:", e);
+                }
+            }
+        });
+
+        function initBoardsNav() {
+            const container = document.getElementById('boardsListContainer');
+            container.innerHTML = '';
+
+            BOARDS.forEach(board => {
+                const isActive = board.id === currentBoardId;
+                const btn = document.createElement('button');
+                btn.className = `w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-sm font-medium transition group ${
+                    isActive ? 'bg-indigo-600/20 text-white border border-indigo-500/30 shadow-sm' : 'text-gray-400 hover:bg-gray-800/60 hover:text-gray-200'
+                }`;
+                btn.onclick = () => selectBoard(board.id);
+                
+                btn.innerHTML = `
+                    <div class="flex items-center space-x-3">
+                        <i class="${board.icon} ${board.color} text-base w-5 text-center"></i>
+                        <span>${board.name}</span>
+                    </div>
+                    <span id="badge-${board.id}" class="text-xs px-2 py-0.5 rounded-md bg-darkCard text-gray-400 border border-gray-700/50">0</span>
+                `;
+                container.appendChild(btn);
+            });
+        }
+
+        window.selectBoard = function(boardId) {
+            currentBoardId = boardId;
+            initBoardsNav();
+            const board = BOARDS.find(b => b.id === boardId);
+            if (board) {
+                document.getElementById('currentBoardTitle').innerHTML = `<i class="${board.icon} ${board.color} mr-2"></i><span>${board.name}</span>`;
+                document.getElementById('currentBoardDesc').innerText = board.desc;
+            }
+            renderNotes();
+            // Close mobile sidebar if open
+            if (window.innerWidth < 768) {
+                toggleSidebar();
+            }
+        }
+
+        window.toggleSidebar = function() {
+            const sidebar = document.getElementById('sidebar');
+            sidebar.classList.toggle('-translate-x-full');
+        }
+
+        function loadInitialData() {
+            const localData = localStorage.getItem('datastudio_notes_v1');
+            if (localData) {
+                try {
+                    notesData = JSON.parse(localData);
+                } catch(e) {
+                    notesData = getDefaultSeedData();
+                }
+            } else {
+                notesData = getDefaultSeedData();
+                saveLocalNotes();
+            }
+            renderNotes();
+        }
+
+        function getDefaultSeedData() {
+            return {
+                python: [
+                    {
+                        id: 'py-1',
+                        title: 'List Comprehensions vs Map/Filter',
+                        desc: 'Forma pythónica de criar listas eficientemente com sintaxe concisa.',
+                        content: '# Exemplo de List Comprehension\nsquares = [x**2 for x in range(10) if x % 2 == 0]\nprint(squares) # [0, 4, 16, 36, 64]\n\n# Equivalente com filter e map\nsquares_alt = list(map(lambda x: x**2, filter(lambda x: x % 2 == 0, range(10))))',
+                        updatedAt: new Date().toISOString()
+                    }
+                ],
+                pyspark: [
+                    {
+                        id: 'ps-1',
+                        title: 'Otimização com Broadcast Join',
+                        desc: 'Como acelerar joins entre DataFrames pequenos e grandes.',
+                        content: 'from pyspark.sql.functions import broadcast\n\n# Fazer broadcast de uma tabela de dimensões pequena\ndf_joined = large_df.join(broadcast(small_df), "id")',
+                        updatedAt: new Date().toISOString()
+                    }
+                ],
+                databricks: [
+                    {
+                        id: 'db-1',
+                        title: 'Widgets em Notebooks Databricks',
+                        desc: 'Como parametrizar notebooks para pipelines automatizados.',
+                        content: '# Criar widget de texto\ndbutils.widgets.text("env", "dev", "Ambiente")\n\n# Ler valor do widget\nenv_val = dbutils.widgets.get("env")\nprint(f"A executar em: {env_val}")',
+                        updatedAt: new Date().toISOString()
+                    }
+                ],
+                sql: [
+                    {
+                        id: 'sql-1',
+                        title: 'Window Functions (ROW_NUMBER vs RANK)',
+                        desc: 'Diferenças práticas para identificar duplicados ou rankings.',
+                        content: 'SELECT \n    employee_id, \n    department,\n    salary,\n    ROW_NUMBER() OVER(PARTITION BY department ORDER BY salary DESC) as rn\nFROM employees;',
+                        updatedAt: new Date().toISOString()
+                    }
+                ],
+                git: [
+                    {
+                        id: 'git-1',
+                        title: 'Comandos Essenciais de Git & Rebase',
+                        desc: 'Boas práticas para manter o histórico limpo.',
+                        content: '# Atualizar branch atual com rebase interativo\ngit pull origin main --rebase\n\n# Corrigir último commit sem alterar mensagem\ngit commit --amend --no-edit',
+                        updatedAt: new Date().toISOString()
+                    }
+                ],
+                snowflake: [
+                    {
+                        id: 'snowflake-1',
+                        title: 'Streams e Tasks para CDC',
+                        desc: 'Captura de alterações em tempo real no Snowflake.',
+                        content: 'CREATE OR REPLACE STREAM my_stream ON TABLE my_table;\n\nCREATE OR REPLACE TASK my_task\nWAREHOUSE = compute_wh\nSCHEDULE = \'1 HOUR\'\nAS\nMERGE INTO target_table t USING my_stream s ON t.id = s.id\nWHEN MATCHED THEN UPDATE SET t.val = s.val;',
+                        updatedAt: new Date().toISOString()
+                    }
+                ],
+                azure: [
+                    {
+                        id: 'azure-1',
+                        title: 'Azure Data Factory - Linked Services',
+                        desc: 'Conectar Key Vault para segurança de credenciais.',
+                        content: '// No ADF, utilizar Azure Key Vault linked service para armazenar connection strings de bases de dados e segredos.',
+                        updatedAt: new Date().toISOString()
+                    }
+                ],
+                terraform: [
+                    {
+                        id: 'tf-1',
+                        title: 'Modularização de Recursos AWS/Azure',
+                        desc: 'Estrutura recomendada para módulos reutilizáveis.',
+                        content: 'module "storage_account" {\n  source              = "./modules/storage"\n  name                = "datastorageterraform"\n  resource_group_name = azurerm_resource_group.rg.name\n  location            = azurerm_resource_group.rg.location\n}',
+                        updatedAt: new Date().toISOString()
+                    }
+                ]
+            };
+        }
+
+        function saveLocalNotes() {
+            localStorage.setItem('datastudio_notes_v1', JSON.stringify(notesData));
+        }
+
+        window.renderNotes = function() {
+            const grid = document.getElementById('notesGrid');
+            const emptyState = document.getElementById('emptyState');
+            grid.innerHTML = '';
+
+            // Update badge counts for all boards
+            BOARDS.forEach(b => {
+                const count = (notesData[b.id] || []).length;
+                const badge = document.getElementById(`badge-${b.id}`);
+                if (badge) badge.innerText = count;
+            });
+
+            let currentNotes = notesData[currentBoardId] || [];
+
+            // Apply search filter if query is present
+            if (searchQuery.trim() !== '') {
+                const q = searchQuery.toLowerCase();
+                currentNotes = currentNotes.filter(n => 
+                    n.title.toLowerCase().includes(q) || 
+                    n.desc.toLowerCase().includes(q) || 
+                    n.content.toLowerCase().includes(q)
+                );
+            }
+
+            if (currentNotes.length === 0) {
+                emptyState.classList.remove('hidden');
+                return;
+            } else {
+                emptyState.classList.add('hidden');
+            }
+
+            currentNotes.forEach(note => {
+                const card = document.createElement('div');
+                card.className = "bg-darkCard border border-gray-800 hover:border-gray-700 rounded-2xl p-5 flex flex-col justify-between transition group shadow-lg";
+                
+                const boardObj = BOARDS.find(b => b.id === currentBoardId);
+
+                card.innerHTML = `
+                    <div>
+                        <div class="flex items-center justify-between mb-3">
+                            <span class="text-xs font-semibold px-2.5 py-1 rounded-lg bg-indigo-500/10 text-indigo-400 border border-indigo-500/20">
+                                ${boardObj ? boardObj.name : currentBoardId}
+                            </span>
+                            <span class="text-xs text-gray-500">${new Date(note.updatedAt).toLocaleDateString()}</span>
+                        </div>
+                        <h4 class="text-base font-bold text-white group-hover:text-indigo-400 transition mb-1">${escapeHtml(note.title)}</h4>
+                        <p class="text-xs text-gray-400 mb-4 line-clamp-2">${escapeHtml(note.desc || '')}</p>
+                        <div class="bg-darker border border-gray-800 rounded-xl p-3 text-xs font-mono text-gray-300 overflow-x-auto max-h-32 mb-4">
+                            <pre><code>${escapeHtml(note.content || '')}</code></pre>
+                        </div>
+                    </div>
+                    <div class="flex items-center justify-between pt-3 border-t border-gray-800/80">
+                        <button onclick="openEditNoteModal('${note.id}')" class="text-xs font-semibold text-indigo-400 hover:text-indigo-300 transition flex items-center space-x-1.5">
+                            <i class="fa-regular fa-pen-to-square"></i>
+                            <span>Editar Nota</span>
+                        </button>
+                        <button onclick="copyToClipboard(event, \`${escapeJs(note.content)}\`)" class="text-xs text-gray-400 hover:text-gray-200 transition flex items-center space-x-1 bg-darker px-2.5 py-1.5 rounded-lg border border-gray-800">
+                            <i class="fa-regular fa-copy"></i>
+                            <span>Copiar Código</span>
+                        </button>
+                    </div>
+                `;
+                grid.appendChild(card);
+            });
+        }
+
+        window.handleSearch = function(val) {
+            searchQuery = val;
+            renderNotes();
+        }
+
+        // Modal Functions for Notes
+        window.openNewNoteModal = function() {
+            document.getElementById('noteId').value = '';
+            document.getElementById('noteTitleInput').value = '';
+            document.getElementById('noteDescInput').value = '';
+            document.getElementById('noteContentInput').value = '';
+            document.getElementById('noteModalTitleLabel').innerText = 'Criar Nova Nota';
+            document.getElementById('deleteNoteBtn').classList.add('hidden');
+            
+            const boardObj = BOARDS.find(b => b.id === currentBoardId);
+            document.getElementById('modalBoardBadge').innerText = boardObj ? boardObj.name : currentBoardId;
+            
+            document.getElementById('noteModal').classList.remove('hidden');
+        }
+
+        window.openEditNoteModal = function(noteId) {
+            const notes = notesData[currentBoardId] || [];
+            const note = notes.find(n => n.id === noteId);
+            if (!note) return;
+
+            document.getElementById('noteId').value = note.id;
+            document.getElementById('noteTitleInput').value = note.title;
+            document.getElementById('noteDescInput').value = note.desc || '';
+            document.getElementById('noteContentInput').value = note.content || '';
+            document.getElementById('noteModalTitleLabel').innerText = 'Editar Nota';
+            document.getElementById('deleteNoteBtn').classList.remove('hidden');
+
+            const boardObj = BOARDS.find(b => b.id === currentBoardId);
+            document.getElementById('modalBoardBadge').innerText = boardObj ? boardObj.name : currentBoardId;
+
+            document.getElementById('noteModal').classList.remove('hidden');
+        }
+
+        window.closeNoteModal = function() {
+            document.getElementById('noteModal').classList.add('hidden');
+        }
+
+        window.saveNote = async function() {
+            const id = document.getElementById('noteId').value || 'note_' + Date.now();
+            const title = document.getElementById('noteTitleInput').value.trim();
+            const desc = document.getElementById('noteDescInput').value.trim();
+            const content = document.getElementById('noteContentInput').value;
+
+            if (!title) {
+                showModal('Atenção', 'Por favor, insere um título para a nota.', 'fa-triangle-exclamation', 'text-amber-400');
+                return;
+            }
+
+            if (!notesData[currentBoardId]) {
+                notesData[currentBoardId] = [];
+            }
+
+            const existingIndex = notesData[currentBoardId].findIndex(n => n.id === id);
+            const noteObj = {
+                id,
+                title,
+                desc,
+                content,
+                updatedAt: new Date().toISOString()
+            };
+
+            if (existingIndex >= 0) {
+                notesData[currentBoardId][existingIndex] = noteObj;
+            } else {
+                notesData[currentBoardId].unshift(noteObj);
+            }
+
+            if (isFirebaseActive && db) {
+                try {
+                    await setDoc(doc(db, 'artifacts', appId, 'public', 'data', `board_${currentBoardId}_notes`, id), noteObj);
+                } catch (e) {
+                    console.error("Erro ao sincronizar com Firebase:", e);
+                }
+            }
+
+            saveLocalNotes();
+            renderNotes();
+            closeNoteModal();
+        }
+
+        window.deleteCurrentNote = async function() {
+            const id = document.getElementById('noteId').value;
+            if (!id) return;
+
+            notesData[currentBoardId] = (notesData[currentBoardId] || []).filter(n => n.id !== id);
+
+            if (isFirebaseActive && db) {
+                try {
+                    await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', `board_${currentBoardId}_notes`, id));
+                } catch (e) {
+                    console.error("Erro ao apagar no Firebase:", e);
+                }
+            }
+
+            saveLocalNotes();
+            renderNotes();
+            closeNoteModal();
+        }
+
+        // Firebase Configuration Modal Management
+        window.openConfigModal = function() {
+            const savedConfig = localStorage.getItem('datastudio_firebase_config') || '';
+            document.getElementById('firebaseConfigInput').value = savedConfig;
+            document.getElementById('configModal').classList.remove('hidden');
+        }
+
+        window.closeConfigModal = function() {
+            document.getElementById('configModal').classList.add('hidden');
+        }
+
+        window.saveFirebaseConfig = function() {
+            const rawConfig = document.getElementById('firebaseConfigInput').value.trim();
+            if (!rawConfig) {
+                localStorage.removeItem('datastudio_firebase_config');
+                window.location.reload();
+                return;
+            }
+
+            try {
+                // Parse json config
+                let configObj;
+                try {
+                    configObj = JSON.parse(rawConfig);
+                } catch(err) {
+                    // Try evaluating as object literal if keys aren't quoted
+                    configObj = eval('(' + rawConfig + ')');
+                }
+
+                if (!configObj.apiKey || !configObj.projectId) {
+                    throw new Error("Faltam campos obrigatórios como apiKey ou projectId.");
+                }
+
+                localStorage.setItem('datastudio_firebase_config', JSON.stringify(configObj));
+                closeConfigModal();
+                initFirebase(configObj);
+                showModal('Sucesso', 'Credenciais do Firebase guardadas com sucesso!', 'fa-circle-check', 'text-emerald-400');
+            } catch(e) {
+                showModal('Erro de Configuração', 'O formato JSON do Firebase é inválido: ' + e.message, 'fa-circle-xmark', 'text-red-400');
+            }
+        }
+
+        async function initFirebase(config) {
+            try {
+                const app = initializeApp(config);
+                db = getFirestore(app);
+                auth = getAuth(app);
+
+                // Authentication
+                if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+                    await signInWithCustomToken(auth, __initial_auth_token);
+                } else {
+                    await signInAnonymously(auth);
+                }
+
+                onAuthStateChanged(auth, (user) => {
+                    if (user) {
+                        document.getElementById('userInfo').innerText = 'UID: ' + user.uid.substring(0, 6) + '...';
+                        document.getElementById('firebaseStatus').className = "mx-4 mt-4 p-2.5 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-300 text-xs flex items-center justify-between";
+                        document.getElementById('statusText').innerText = 'Firebase Conectado';
+                        isFirebaseActive = true;
+                        fetchAllBoardsFromFirebase();
+                    }
+                });
+            } catch(e) {
+                console.error("Falha ao iniciar Firebase:", e);
+                document.getElementById('statusText').innerText = 'Erro de Ligação Firebase';
+            }
+        }
+
+        async function fetchAllBoardsFromFirebase() {
+            if (!db) return;
+            BOARDS.forEach(async (board) => {
+                try {
+                    const colRef = collection(db, 'artifacts', appId, 'public', 'data', `board_${board.id}_notes`);
+                    const querySnapshot = await getDocs(colRef);
+                    const remoteNotes = [];
+                    querySnapshot.forEach((docSnap) => {
+                        remoteNotes.push(docSnap.data());
+                    });
+                    if (remoteNotes.length > 0) {
+                        notesData[board.id] = remoteNotes;
+                        saveLocalNotes();
+                        renderNotes();
+                    }
+                } catch(e) {
+                    console.error(`Erro ao carregar board ${board.id}:`, e);
+                }
+            });
+        }
+
+        // Utility functions
+        window.copyToClipboard = function(e, text) {
+            const textarea = document.createElement('textarea');
+            textarea.value = text;
+            document.body.appendChild(textarea);
+            textarea.select();
+            try {
+                document.execCommand('copy');
+                const btn = e.currentTarget;
+                const originalHTML = btn.innerHTML;
+                btn.innerHTML = `<i class="fa-solid fa-check text-emerald-400"></i><span>Copiado!</span>`;
+                setTimeout(() => btn.innerHTML = originalHTML, 2000);
+            } catch (err) {
+                console.error('Falha ao copiar', err);
+            }
+            document.body.removeChild(textarea);
+        }
+
+        window.showModal = function(title, message, iconClass = 'fa-info', iconColor = 'text-indigo-400') {
+            document.getElementById('modalTitle').innerText = title;
+            document.getElementById('modalMessage').innerText = message;
+            const iconDiv = document.getElementById('modalIcon');
+            iconDiv.className = `w-10 h-10 rounded-xl bg-darker flex items-center justify-center text-lg ${iconColor}`;
+            iconDiv.innerHTML = `<i class="fa-solid ${iconClass}"></i>`;
+            document.getElementById('notificationModal').classList.remove('hidden');
+        }
+
+        window.closeModal = function() {
+            document.getElementById('notificationModal').classList.add('hidden');
+        }
+
+        function escapeHtml(text) {
+            const map = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' };
+            return text.replace(/[&<>"']/g, function(m) { return map[m]; });
+        }
+
+        function escapeJs(text) {
+            return text.replace(/\\/g, '\\\\').replace(/`/g, '\\`').replace(/\$/g, '\\$');
+        }
+    </script>
+</body>
+</html>
